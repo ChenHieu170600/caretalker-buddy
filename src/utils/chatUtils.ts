@@ -9,40 +9,21 @@ export type Message = {
   timestamp: Date;
 };
 
-// Sample fallback responses for different support categories (used if API is unavailable)
-const fallbackResponses = {
-  anxiety: [
-    "I understand anxiety can be overwhelming. Take a deep breath - inhale for 4 counts, hold for 4, and exhale for 6.",
-    "When you're feeling anxious, try grounding yourself by naming 5 things you can see, 4 things you can touch, 3 things you can hear, 2 things you can smell, and 1 thing you can taste.",
-    "It's okay to step away from situations that trigger your anxiety. Your well-being is the priority.",
-    "Remember that anxious thoughts are not facts - they're just thoughts, and they will pass.",
-  ],
-  depression: [
-    "Depression can make even small tasks feel overwhelming. Remember that getting out of bed today was an achievement.",
-    "Try to set one small, achievable goal for today. Even something as simple as drinking a glass of water counts as progress.",
-    "Your feelings are valid, and it's okay to not be okay sometimes. I'm here to listen whenever you need support.",
-    "Consider gentle movement like a short walk or simple stretches - physical activity, even brief, can help shift your mood.",
-  ],
-  stress: [
-    "Let's try a quick relaxation technique: tense all your muscles for 5 seconds, then release completely. Notice how different your body feels afterward.",
-    "Are you taking short, shallow breaths? Try breathing from your diaphragm - place a hand on your stomach and make it rise with each inhale.",
-    "What's one small thing you could do right now to be kind to yourself? Perhaps a warm drink or a moment of stillness?",
-    "Remember that it's okay to set boundaries and say no to additional responsibilities when you're feeling overwhelmed.",
-  ],
-  general: [
-    "How are you feeling right now, on a scale from 1-10?",
-    "Remember that your worth isn't determined by your productivity or achievements. You matter simply because you exist.",
-    "What's one tiny thing that brought you joy recently? Sometimes focusing on small pleasures can help shift our perspective.",
-    "You're not alone in your struggles, even when it feels that way. Many people face similar challenges, and reaching out like this is a brave step.",
-  ],
-};
+// Fallback responses in case the API is unavailable
+const fallbackResponses = [
+  "I'm here to listen and support you. How are you feeling today?",
+  "That sounds challenging. Would you like to tell me more about what's going on?",
+  "Thank you for sharing that with me. What do you think might help in this situation?",
+  "It's normal to feel that way. Remember that your feelings are valid.",
+  "I'm sorry to hear you're going through this. Remember to be kind to yourself.",
+  "Would it help to try a quick breathing exercise together? We could take a few deep breaths.",
+  "Is there someone in your life who might be able to offer additional support right now?",
+];
 
 // Function to get a fallback response if the API fails
-export const getFallbackResponse = (category: keyof typeof fallbackResponses | string): string => {
-  const categoryKey = category in fallbackResponses ? category as keyof typeof fallbackResponses : 'general';
-  const categoryResponses = fallbackResponses[categoryKey];
-  const randomIndex = Math.floor(Math.random() * categoryResponses.length);
-  return categoryResponses[randomIndex];
+export const getFallbackResponse = (): string => {
+  const randomIndex = Math.floor(Math.random() * fallbackResponses.length);
+  return fallbackResponses[randomIndex];
 };
 
 // Custom hook for managing chat messages
@@ -76,7 +57,7 @@ export const useChat = () => {
     } catch (error) {
       console.error('Error getting response:', error);
       // If there's an error with the API, use fallback responses
-      const fallbackResponse = getFallbackResponse(category);
+      const fallbackResponse = getFallbackResponse();
       addMessage(fallbackResponse, 'bot');
     } finally {
       setLoading(false);

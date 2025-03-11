@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -53,15 +52,15 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
-				sidebar: {
-					DEFAULT: 'hsl(var(--sidebar-background))',
-					foreground: 'hsl(var(--sidebar-foreground))',
-					primary: 'hsl(var(--sidebar-primary))',
-					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-					accent: 'hsl(var(--sidebar-accent))',
-					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-					border: 'hsl(var(--sidebar-border))',
-					ring: 'hsl(var(--sidebar-ring))'
+				starry: {
+					dark: '#1A1F2C',
+					deeper: '#0F1218',
+					accent: '#403E43',
+					purple: '#2D2B42',
+					blue: '#2C3E50',
+					highlight: '#6D6AFF',
+					text: '#E2E8F0',
+					muted: '#94A3B8'
 				},
 				support: {
 					light: '#E6F7FF',
@@ -112,6 +111,14 @@ export default {
 					'0%, 100%': { opacity: '1' },
 					'50%': { opacity: '0' },
 				},
+				'starshine': {
+					'0%, 100%': { opacity: '0.4' },
+					'50%': { opacity: '0.8' },
+				},
+				'float-slow': {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-8px)' },
+				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
@@ -122,6 +129,8 @@ export default {
 				'float': 'float 3s infinite ease-in-out',
 				'typing': 'typing 3.5s steps(40, end)',
 				'blink': 'blink 1s step-end infinite',
+				'starshine': 'starshine 3s ease-in-out infinite',
+				'float-slow': 'float-slow 6s ease-in-out infinite',
 			},
 			boxShadow: {
 				'soft': '0 4px 20px rgba(0, 0, 0, 0.05)',
@@ -142,6 +151,10 @@ export default {
 				'4xl': ['2.25rem', { lineHeight: '2.5rem' }],
 				'5xl': ['3rem', { lineHeight: '1' }],
 				'6xl': ['3.75rem', { lineHeight: '1' }],
+			},
+			backgroundImage: {
+				'starry-night': 'radial-gradient(circle, transparent 8%, #1A1F2C 8%), linear-gradient(to right, #1A1F2C, #0F1218)',
+				'space-gradient': 'linear-gradient(to bottom, #1A1F2C, #0F1218)',
 			},
 		}
 	},

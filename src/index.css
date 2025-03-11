@@ -5,46 +5,37 @@
 
 @layer base {
   :root {
-    --background: 210 50% 98%;
-    --foreground: 222 47% 11%;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 210 100% 50%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 222 47% 11%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
 
     --radius: 0.75rem;
-
-    --sidebar-background: 210 50% 98%;
-    --sidebar-foreground: 240 5% 26%;
-    --sidebar-primary: 210 100% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 30% 96%;
-    --sidebar-accent-foreground: 240 6% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217 91% 60%;
   }
-
+  
   * {
     @apply border-border;
   }
@@ -61,38 +52,37 @@
   input, textarea, button, a {
     -webkit-tap-highlight-color: transparent;
   }
-
+  
   .chat-container {
     max-height: calc(100vh - 16rem);
     @apply overflow-y-auto overflow-x-hidden p-4;
   }
   
-  .glass-morphism {
-    @apply bg-white/70 backdrop-blur-lg backdrop-saturate-150 border border-white/20;
+  /* New starry theme styles */
+  .starry-background {
+    @apply bg-starry-dark;
+    background-image: 
+      radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
+      radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
+      radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
+    background-size: 550px 550px, 350px 350px, 250px 250px;
+    background-position: 0 0, 20px 40px, 60px 100px;
   }
   
-  .soft-shadow {
-    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+  .glass-panel {
+    @apply bg-black/30 backdrop-blur-xl border border-white/10 shadow-md;
   }
   
-  .text-shadow-sm {
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  }
-  
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-support;
-  }
-  
-  .animate-in {
-    animation: fadeIn 0.5s ease-out forwards;
+  .text-glow {
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
   }
   
   .chat-bubble-user {
-    @apply bg-support text-white rounded-2xl rounded-tr-sm p-4 shadow-md ml-auto;
+    @apply bg-starry-highlight/90 text-white rounded-2xl rounded-tr-sm p-4 shadow-md ml-auto;
   }
   
   .chat-bubble-bot {
-    @apply bg-calm-light text-foreground rounded-2xl rounded-tl-sm p-4 shadow-sm mr-auto;
+    @apply glass-panel text-starry-text rounded-2xl rounded-tl-sm p-4 shadow-sm mr-auto;
   }
 
   .typing-indicator {
@@ -100,7 +90,7 @@
   }
   
   .typing-indicator span {
-    @apply w-2 h-2 rounded-full bg-gray-400;
+    @apply w-2 h-2 rounded-full bg-starry-muted;
     animation: typing 1s infinite alternate;
   }
   
@@ -112,6 +102,7 @@
     animation-delay: 0.4s;
   }
 
+  /* Keep existing animations */
   @keyframes typing {
     0% {
       transform: translateY(0);

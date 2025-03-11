@@ -22,17 +22,17 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     >
       <div
         className={cn(
-          'rounded-2xl p-4 shadow-soft',
+          'rounded-2xl p-4',
           message.sender === 'user'
-            ? 'bg-support text-white rounded-tr-sm'
-            : 'bg-calm text-foreground rounded-tl-sm'
+            ? 'chat-bubble-user'
+            : 'chat-bubble-bot'
         )}
       >
         <p className="text-base leading-relaxed">{message.content}</p>
       </div>
       <div
         className={cn(
-          'text-xs mt-1 text-muted-foreground',
+          'text-xs mt-1 text-starry-muted',
           message.sender === 'user' ? 'text-right' : 'text-left'
         )}
       >

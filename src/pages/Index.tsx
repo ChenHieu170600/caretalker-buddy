@@ -6,7 +6,7 @@ import ChatInterface from '../components/ChatInterface';
 
 const Index: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-calm-light to-white">
+    <div className="min-h-screen flex flex-col starry-background text-starry-text">
       <Header />
       <main className="flex-grow container max-w-4xl mx-auto px-4 py-6 flex flex-col">
         <ChatInterface />
