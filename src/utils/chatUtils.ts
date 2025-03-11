@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
+import { sendMessageToBackend } from './apiService';
 
 export type Message = {
   id: string;
@@ -8,8 +9,8 @@ export type Message = {
   timestamp: Date;
 };
 
-// Sample responses for different support categories
-const responses = {
+// Sample fallback responses for different support categories (used if API is unavailable)
+const fallbackResponses = {
   anxiety: [
     "I understand anxiety can be overwhelming. Take a deep breath - inhale for 4 counts, hold for 4, and exhale for 6.",
     "When you're feeling anxious, try grounding yourself by naming 5 things you can see, 4 things you can touch, 3 things you can hear, 2 things you can smell, and 1 thing you can taste.",
@@ -36,10 +37,10 @@ const responses = {
   ],
 };
 
-// Function to generate a random response based on category
-export const getResponse = (category: keyof typeof responses | string): string => {
-  const categoryKey = category in responses ? category as keyof typeof responses : 'general';
-  const categoryResponses = responses[categoryKey];
+// Function to get a fallback response if the API fails
+export const getFallbackResponse = (category: keyof typeof fallbackResponses | string): string => {
+  const categoryKey = category in fallbackResponses ? category as keyof typeof fallbackResponses : 'general';
+  const categoryResponses = fallbackResponses[categoryKey];
   const randomIndex = Math.floor(Math.random() * categoryResponses.length);
   return categoryResponses[randomIndex];
 };
@@ -60,18 +61,26 @@ export const useChat = () => {
     setMessages((prevMessages) => [...prevMessages, newMessage]);
   };
 
-  const sendMessage = async (content: string, category: keyof typeof responses | string = 'general') => {
+  const sendMessage = async (content: string, category: string = 'general') => {
     if (!content.trim()) return;
     
     addMessage(content, 'user');
     setLoading(true);
     
-    // Simulate API response time
-    setTimeout(() => {
-      const botResponse = getResponse(category);
-      addMessage(botResponse, 'bot');
+    try {
+      // Send message to the Python backend
+      const response = await sendMessageToBackend(content, category);
+      
+      // Add the response from the backend to the chat
+      addMessage(response.message, 'bot');
+    } catch (error) {
+      console.error('Error getting response:', error);
+      // If there's an error with the API, use fallback responses
+      const fallbackResponse = getFallbackResponse(category);
+      addMessage(fallbackResponse, 'bot');
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   // Auto-scroll to bottom when messages change
