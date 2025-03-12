@@ -11,7 +11,7 @@ const ChatInterface: React.FC = () => {
 
   const handleSendMessage = () => {
     if (inputValue.trim()) {
-      sendMessage(inputValue, 'general'); // We still pass a category but it's always 'general'
+      sendMessage(inputValue);
       setInputValue('');
       
       // Focus the input after sending

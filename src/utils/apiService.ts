@@ -10,19 +10,16 @@ const API_BASE_URL = 'http://localhost:5000';
 // Interface for the response from the backend
 interface ApiResponse {
   message: string;
-  category?: string;
   error?: string;
 }
 
 /**
  * Send a message to the backend API and get a response
  * @param message The user's message
- * @param category The support category (anxiety, depression, stress, general)
  * @returns A promise that resolves to the API response
  */
 export const sendMessageToBackend = async (
-  message: string,
-  category: string = 'general'
+  message: string
 ): Promise<ApiResponse> => {
   try {
     const response = await fetch(`${API_BASE_URL}/chat`, {
@@ -30,7 +27,7 @@ export const sendMessageToBackend = async (
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message, category }),
+      body: JSON.stringify({ message }),
     });
 
     if (!response.ok) {

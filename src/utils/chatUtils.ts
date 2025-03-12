@@ -42,7 +42,7 @@ export const useChat = () => {
     setMessages((prevMessages) => [...prevMessages, newMessage]);
   };
 
-  const sendMessage = async (content: string, category: string = 'general') => {
+  const sendMessage = async (content: string) => {
     if (!content.trim()) return;
     
     addMessage(content, 'user');
@@ -50,7 +50,7 @@ export const useChat = () => {
     
     try {
       // Send message to the Python backend
-      const response = await sendMessageToBackend(content, category);
+      const response = await sendMessageToBackend(content);
       
       // Add the response from the backend to the chat
       addMessage(response.message, 'bot');

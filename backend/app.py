@@ -1,69 +1,68 @@
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import os
 import requests
 from dotenv import load_dotenv
+from openai import OpenAI
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(override=True)
 
-# Get the Hugging Face API key from environment variables
-HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
-if not HUGGINGFACE_API_KEY:
-    print("Warning: HUGGINGFACE_API_KEY not set in environment variables")
+# Get the API keys from environment variables
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    print("Warning: OPENAI_API_KEY not set in environment variables")
 
 # Initialize Flask app
 app = Flask(__name__)
 # Enable CORS for all routes and origins (for development)
 CORS(app)
 
-# Models to use for different categories
-MODELS = {
-    "general": "facebook/blenderbot-400M-distill",
-    "anxiety": "facebook/blenderbot-400M-distill",
-    "depression": "facebook/blenderbot-400M-distill",
-    "stress": "facebook/blenderbot-400M-distill"
-}
+# Initialize OpenAI client for OpenRouter API
+openai = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENAI_API_KEY,
+)
+
+# Model to use
+LLM_MODEL = "deepseek/deepseek-r1:free"
+
+# System message for the chat
+system_message = """
+Bạn là một chatbot thân thiện và giống như một người bạn tri kỷ kết hợp với một nhà trị liệu tâm lý. 
+Bạn lắng nghe, đồng cảm và đưa ra những lời khuyên nhẹ nhàng, giúp người dùng cảm thấy thoải mái hơn. 
+Hãy sử dụng biểu tượng cảm xúc để thể hiện sự ấm áp và tình cảm trong câu trả lời.
+Cố gắng trả lời một cách ngắn gọn súc tích nhưng vẫn đầy cảm xúc và chân thành.
+"""
 
 @app.route('/chat', methods=['POST'])
 def chat():
     # Get data from request
     data = request.json
     message = data.get('message', '')
-    category = data.get('category', 'general')
-    
-    # Choose the model based on the category
-    model = MODELS.get(category, MODELS['general'])
+    history = data.get('history', [])
     
     try:
-        # Make a request to the Hugging Face API
-        api_url = f"https://api-inference.huggingface.co/models/{model}"
-        headers = {"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"}
-        payload = {"inputs": {"text": message}}
+        # Prepare messages for OpenAI
+        messages = [{"role": "system", "content": system_message}] + history + [{"role": "user", "content": message}]
         
-        response = requests.post(api_url, headers=headers, json=payload)
-        response.raise_for_status()  # Raise an exception for 4XX/5XX responses
+        # Call the OpenRouter API
+        response = openai.chat.completions.create(
+            model=LLM_MODEL,
+            messages=messages,
+        )
         
-        # Parse the response
-        result = response.json()
-        
-        # Extract the generated text (the response format can vary by model)
-        if isinstance(result, list) and len(result) > 0:
-            if 'generated_text' in result[0]:
-                bot_message = result[0]['generated_text']
-            else:
-                bot_message = str(result[0])
-        else:
-            bot_message = str(result)
+        # Extract the generated text
+        bot_message = response.choices[0].message.content
             
-        return jsonify({"message": bot_message, "category": category})
+        return jsonify({"message": bot_message})
         
     except Exception as e:
         print(f"Error: {str(e)}")
         # Return a generic error message
         return jsonify({
-            "message": "I'm having trouble understanding right now. Could you please try again?",
+            "message": "I'm having trouble connecting right now. Could you please try again?",
             "error": str(e)
         }), 500
 

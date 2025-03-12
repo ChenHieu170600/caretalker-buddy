@@ -1,7 +1,7 @@
 
 # MindfulCompanion Python Backend
 
-This is the Python backend for the MindfulCompanion application. It uses Flask to create a simple API that communicates with the Hugging Face API to generate responses for the chatbot.
+This is the Python backend for the MindfulCompanion application. It uses Flask to create a simple API that communicates with the OpenRouter API to generate responses for the chatbot.
 
 ## Setup
 
@@ -25,9 +25,9 @@ This is the Python backend for the MindfulCompanion application. It uses Flask t
    pip install -r requirements.txt
    ```
 
-4. Create a `.env` file in the backend directory with your Hugging Face API key:
+4. Create a `.env` file in the backend directory with your OpenAI API key for OpenRouter:
    ```
-   HUGGINGFACE_API_KEY=your_huggingface_api_key
+   OPENAI_API_KEY=your_openrouter_api_key
    ```
 
 5. Run the Flask app:
@@ -40,16 +40,17 @@ The backend will be available at http://localhost:5000.
 ## API Endpoints
 
 - `POST /chat`: Send a message to the chatbot
-  - Request body: `{ "message": "Your message here", "category": "general" }`
-  - Response: `{ "message": "Bot response here", "category": "general" }`
+  - Request body: `{ "message": "Your message here" }`
+  - Response: `{ "message": "Bot response here" }`
 
 - `GET /health`: Check if the API is running
   - Response: `{ "status": "healthy" }`
 
-## Getting a Hugging Face API Key
+## Getting an OpenRouter API Key
 
-1. Create an account on [Hugging Face](https://huggingface.co/)
+1. Create an account on [OpenRouter](https://openrouter.ai/)
 2. Go to your profile settings
-3. Navigate to "Access Tokens"
-4. Create a new token with "read" access
-5. Copy the token and add it to your `.env` file
+3. Navigate to "API Keys"
+4. Create a new API key
+5. Copy the key and add it to your `.env` file
+
