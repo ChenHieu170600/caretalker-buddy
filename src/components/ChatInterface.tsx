@@ -1,13 +1,44 @@
-
 import React, { useState, useRef, KeyboardEvent } from 'react';
 import { useChat } from '../utils/chatUtils';
 import MessageBubble from './MessageBubble';
-import { Send } from 'lucide-react';
+import { Send, ChevronDown } from 'lucide-react';
 
 const ChatInterface: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
-  const { messages, loading, sendMessage, messagesEndRef } = useChat();
+  const { 
+    messages, 
+    loading, 
+    sendMessage, 
+    messagesEndRef, 
+    availableModels, 
+    currentModel, 
+    setModel,
+    availablePersonas,
+    currentPersona,
+    setPersona
+  } = useChat();
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const [isPersonaDropdownOpen, setIsPersonaDropdownOpen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const personaDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsModelDropdownOpen(false);
+      }
+      if (personaDropdownRef.current && !personaDropdownRef.current.contains(event.target as Node)) {
+        setIsPersonaDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleSendMessage = () => {
     if (inputValue.trim()) {
@@ -28,9 +59,94 @@ const ChatInterface: React.FC = () => {
     }
   };
 
+  const handleModelSelect = (model: string) => {
+    setModel(model);
+    setIsModelDropdownOpen(false);
+  };
+
+  const handlePersonaSelect = (persona: string) => {
+    setPersona(persona);
+    setIsPersonaDropdownOpen(false);
+  };
+
+  // Format model name for display
+  const formatModelName = (model: string) => {
+    // Extract the model name from the full model ID
+    const parts = model.split('/');
+    if (parts.length > 1) {
+      return parts[1].split(':')[0];
+    }
+    return model;
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col h-full">
       <div className="rounded-2xl glass-panel p-4 md:p-6 flex-grow flex flex-col h-full">
+        {/* Controls Bar */}
+        <div className="flex justify-between mb-2">
+          {/* Model Selection Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              className="flex items-center space-x-1 text-sm text-starry-text hover:text-starry-highlight transition-colors"
+              onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+            >
+              <span>Model: {formatModelName(currentModel)}</span>
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            
+            {isModelDropdownOpen && (
+              <div className="absolute top-8 left-0 z-10 w-48 rounded-md shadow-lg bg-black/80 backdrop-blur-sm border border-white/10">
+                <div className="py-1">
+                  {availableModels.map((model) => (
+                    <button
+                      key={model}
+                      className={`block w-full text-left px-4 py-2 text-sm ${
+                        model === currentModel
+                          ? 'bg-starry-highlight/20 text-starry-highlight'
+                          : 'text-starry-text hover:bg-starry-highlight/10'
+                      }`}
+                      onClick={() => handleModelSelect(model)}
+                    >
+                      {formatModelName(model)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Persona Selection Dropdown */}
+          <div className="relative" ref={personaDropdownRef}>
+            <button
+              className="flex items-center space-x-1 text-sm text-starry-text hover:text-starry-highlight transition-colors"
+              onClick={() => setIsPersonaDropdownOpen(!isPersonaDropdownOpen)}
+            >
+              <span>Persona: {currentPersona}</span>
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            
+            {isPersonaDropdownOpen && (
+              <div className="absolute top-8 right-0 z-10 w-48 rounded-md shadow-lg bg-black/80 backdrop-blur-sm border border-white/10">
+                <div className="py-1">
+                  {availablePersonas.map((persona) => (
+                    <button
+                      key={persona.id}
+                      className={`block w-full text-left px-4 py-2 text-sm ${
+                        persona.id === currentPersona
+                          ? 'bg-starry-highlight/20 text-starry-highlight'
+                          : 'text-starry-text hover:bg-starry-highlight/10'
+                      }`}
+                      onClick={() => handlePersonaSelect(persona.id)}
+                    >
+                      {persona.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="chat-container flex-grow my-4 rounded-xl bg-black/20 overflow-y-auto backdrop-blur-sm">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center px-4 py-10 text-center">
