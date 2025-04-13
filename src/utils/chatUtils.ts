@@ -151,6 +151,17 @@ export const useChat = () => {
     }
   };
 
+  const loadMessages = useCallback((storedMessages: Array<{ role: string; content: string; timestamp: string }>) => {
+    const loadedMessages: Message[] = storedMessages.map(msg => ({
+      id: Math.random().toString(36).substr(2, 9),
+      sender: msg.role as 'user' | 'bot',
+      content: msg.content,
+      timestamp: new Date(msg.timestamp)
+    }));
+    setMessages(loadedMessages);
+    setTimeout(scrollToBottom, 100);
+  }, []);
+
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
     
@@ -215,6 +226,10 @@ export const useChat = () => {
     }
   }, [currentModel, currentPersona]);
 
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+  }, []);
+
   return {
     messages,
     loading,
@@ -225,6 +240,8 @@ export const useChat = () => {
     setModel: handleSetModel,
     availablePersonas,
     currentPersona,
-    setPersona: handleSetPersona
+    setPersona: handleSetPersona,
+    loadMessages,
+    clearMessages
   };
 };
