@@ -110,6 +110,17 @@ class ChatService:
                 max_tokens=1000
             )
             
+            # Log the response
+            logger.info(f"API Response: {response}")
+            
+            # Check if the response is None
+            if response is None:
+                logger.error("Received None response from OpenRouter API.")
+                return {
+                    "error": "Error: No response from the API.",
+                    "history": self.history
+                }
+            
             # Extract response content
             response_content = response.choices[0].message.content
             
