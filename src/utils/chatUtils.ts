@@ -1,8 +1,9 @@
+
 // Update the import path for useToast
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Message, Conversation } from '../types';
-import { sendMessageToBackend, fetchConversations, createNewConversation } from './apiService';
+import { sendMessageToBackend, getConversations, createNewConversation } from './apiService';
 import { useToast } from "../hooks/use-toast";
 
 interface ChatHookProps {
@@ -22,14 +23,17 @@ export const useChat = ({ conversationId, onConversationChange }: ChatHookProps)
     useEffect(() => {
         if (conversationId) {
             setLoading(true);
-            fetchConversations()
-                .then(conversations => {
-                    const conversation = conversations.find(c => c.id === conversationId);
-                    if (conversation) {
-                        setMessages(conversation.messages);
-                    } else {
-                        setMessages([]);
-                    }
+            getConversations()
+                .then(response => {
+                    const conversations = Object.entries(response.conversations || {}).map(([id, data]) => ({
+                        id,
+                        title: data.title,
+                        lastUpdated: new Date(data.updated_at),
+                        messages: [] // We'll need to load these separately
+                    }));
+                    
+                    // For now, just clear messages until we implement message fetching
+                    setMessages([]);
                     setLoading(false);
                 })
                 .catch(err => {
@@ -61,11 +65,11 @@ export const useChat = ({ conversationId, onConversationChange }: ChatHookProps)
         try {
             if (conversationId) {
                 const response = await sendMessageToBackend(conversationId, newMessage);
-                if (response && response.content) {
+                if (response && response.message) {
                     const botMessage: Message = {
                         id: uuidv4(),
                         conversationId: conversationId,
-                        content: response.content,
+                        content: response.message,
                         sender: 'bot',
                         timestamp: new Date(),
                     };
@@ -74,9 +78,9 @@ export const useChat = ({ conversationId, onConversationChange }: ChatHookProps)
                     throw new Error('Failed to send message.');
                 }
             } else {
-                const newConversation = await createNewConversation(newMessage);
-                if (newConversation && newConversation.id) {
-                    onConversationChange(newConversation.id);
+                const newConversation = await createNewConversation();
+                if (newConversation && newConversation.conversation_id) {
+                    onConversationChange(newConversation.conversation_id);
                     toast({
                         title: "New Conversation Started!",
                         description: "Your conversation has been successfully created.",

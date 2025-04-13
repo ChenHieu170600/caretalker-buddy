@@ -1,10 +1,10 @@
-// Update the import path for useToast
+
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useToast } from "../hooks/use-toast";
 import { Conversation } from '../types';
-import { createNewConversation, getConversations, deleteConversation } from '../utils/apiService';
-import { cn } from "@/lib/utils";
+import { getConversations, createNewConversation, deleteConversation } from '../utils/apiService';
+import { cn } from "../lib/utils";
 
 interface ConversationsSidebarProps {
     onConversationSelected: (conversationId: string) => void;
@@ -23,8 +23,15 @@ const ConversationsSidebar: React.FC<ConversationsSidebarProps> = ({ onConversat
 
     const loadConversations = async () => {
         try {
-            const fetchedConversations = await getConversations();
-            setConversations(fetchedConversations);
+            const response = await getConversations();
+            // Convert the conversations object to an array
+            const conversationsArray: Conversation[] = Object.entries(response.conversations || {}).map(([id, data]) => ({
+                id,
+                title: data.title,
+                lastUpdated: new Date(data.updated_at),
+                messages: []
+            }));
+            setConversations(conversationsArray);
         } catch (error) {
             console.error("Failed to load conversations:", error);
             toast({
@@ -39,12 +46,20 @@ const ConversationsSidebar: React.FC<ConversationsSidebarProps> = ({ onConversat
         setIsCreating(true);
         try {
             const newConversation = await createNewConversation();
-            setConversations(prev => [...prev, newConversation]);
-            onConversationSelected(newConversation.id);
-            toast({
-                title: "Conversation created",
-                description: "New conversation has been successfully created.",
-            });
+            if (newConversation && newConversation.conversation_id) {
+                const newConvo: Conversation = {
+                    id: newConversation.conversation_id,
+                    title: "New Conversation",
+                    lastUpdated: new Date(),
+                    messages: []
+                };
+                setConversations(prev => [...prev, newConvo]);
+                onConversationSelected(newConversation.conversation_id);
+                toast({
+                    title: "Conversation created",
+                    description: "New conversation has been successfully created.",
+                });
+            }
         } catch (error) {
             console.error("Failed to create conversation:", error);
             toast({
@@ -96,7 +111,10 @@ const ConversationsSidebar: React.FC<ConversationsSidebarProps> = ({ onConversat
                     {conversations.map(conversation => (
                         <li
                             key={conversation.id}
-                            className={`py-2 px-4 rounded-md cursor-pointer hover:bg-white/5 transition-colors ${selectedConversationId === conversation.id ? 'bg-white/10' : ''}`}
+                            className={cn(
+                              "py-2 px-4 rounded-md cursor-pointer hover:bg-white/5 transition-colors",
+                              selectedConversationId === conversation.id ? 'bg-white/10' : ''
+                            )}
                             onClick={() => onConversationSelected(conversation.id)}
                         >
                             <div className="flex items-center justify-between">
