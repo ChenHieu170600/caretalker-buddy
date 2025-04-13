@@ -1,5 +1,13 @@
+
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Message } from '../types';
+import { v4 as uuidv4 } from 'uuid';
+import { Message, Conversation } from '../types';
+import { 
+  getConversation, 
+  createConversation, 
+  addMessageToConversation, 
+  getConversations as fetchAllConversations 
+} from './conversationUtils';
 
 interface Persona {
   id: string;
@@ -24,9 +32,17 @@ export const getFallbackResponse = (): string => {
   return fallbackResponses[randomIndex];
 };
 
-export const useChat = () => {
+interface UseChatProps {
+  conversationId?: string;
+  onConversationChange?: (id: string) => void;
+}
+
+export const useChat = (props?: UseChatProps) => {
+  const { conversationId, onConversationChange } = props || {};
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(conversationId || null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentModel, setCurrentModel] = useState('google/gemma-3-27b-it:free');
   const [currentPersona, setCurrentPersona] = useState('therapist');
@@ -37,6 +53,26 @@ export const useChat = () => {
     'deepseek/deepseek-r1:free',
     'meta-llama/llama-3.3-70b-instruct:free'
   ];
+  
+  // Load conversations
+  useEffect(() => {
+    const loadedConversations = fetchAllConversations();
+    setConversations(loadedConversations);
+  }, []);
+  
+  // Load messages from conversation when conversationId changes
+  useEffect(() => {
+    if (activeConversationId) {
+      const conversation = getConversation(activeConversationId);
+      if (conversation) {
+        setMessages(conversation.messages);
+      } else {
+        setMessages([]);
+      }
+    } else {
+      setMessages([]);
+    }
+  }, [activeConversationId]);
   
   // Fetch personas from backend
   useEffect(() => {
@@ -151,19 +187,41 @@ export const useChat = () => {
     }
   };
 
+  const selectConversation = (id: string | null) => {
+    setActiveConversationId(id);
+    if (id && onConversationChange) {
+      onConversationChange(id);
+    }
+  };
+
+  const createNewConversation = () => {
+    const newConversation = createConversation();
+    setConversations(prevConversations => [newConversation, ...prevConversations]);
+    selectConversation(newConversation.id);
+    return newConversation;
+  };
+
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
     
     console.log('Sending message with model:', currentModel, 'and persona:', currentPersona);
     
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content,
-      sender: 'user',
-      timestamp: new Date()
-    };
+    // Create conversation if needed or get current conversation id
+    const conversationId = activeConversationId || createConversation(content).id;
     
+    if (!activeConversationId) {
+      selectConversation(conversationId);
+    }
+    
+    // Add user message to conversation
+    const userMessage = addMessageToConversation(conversationId, content, 'user');
+    
+    if (!userMessage) {
+      console.error('Failed to add user message to conversation');
+      return;
+    }
+    
+    // Update messages state for immediate feedback
     setMessages(prev => [...prev, userMessage]);
     setLoading(true);
     
@@ -188,32 +246,31 @@ export const useChat = () => {
       const data = await response.json();
       console.log('Received response from backend:', data);
       
-      // Add assistant message
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: data.message,
-        sender: 'bot',
-        timestamp: new Date()
-      };
+      // Add assistant message to conversation
+      const assistantMessage = addMessageToConversation(conversationId, data.message, 'bot');
       
-      setMessages(prev => [...prev, assistantMessage]);
+      if (assistantMessage) {
+        // Update messages state
+        setMessages(prev => [...prev, assistantMessage]);
+      }
+      
+      // Refresh conversations list to update titles/timestamps
+      setConversations(fetchAllConversations());
     } catch (error) {
       console.error('Error sending message:', error);
       
-      // Add error message
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: 'Sorry, I encountered an error. Please try again.',
-        sender: 'bot',
-        timestamp: new Date()
-      };
+      // Use fallback response
+      const fallbackContent = getFallbackResponse();
+      const fallbackMessage = addMessageToConversation(conversationId, fallbackContent, 'bot');
       
-      setMessages(prev => [...prev, errorMessage]);
+      if (fallbackMessage) {
+        setMessages(prev => [...prev, fallbackMessage]);
+      }
     } finally {
       setLoading(false);
       setTimeout(scrollToBottom, 100);
     }
-  }, [currentModel, currentPersona]);
+  }, [activeConversationId, currentModel, currentPersona, onConversationChange]);
 
   return {
     messages,
@@ -225,6 +282,10 @@ export const useChat = () => {
     setModel: handleSetModel,
     availablePersonas,
     currentPersona,
-    setPersona: handleSetPersona
+    setPersona: handleSetPersona,
+    conversations,
+    activeConversationId,
+    selectConversation,
+    createNewConversation
   };
 };

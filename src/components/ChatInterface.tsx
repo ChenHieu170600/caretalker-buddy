@@ -1,10 +1,14 @@
+
 import React, { useState, useRef, KeyboardEvent } from 'react';
 import { useChat } from '../utils/chatUtils';
 import MessageBubble from './MessageBubble';
-import { Send, ChevronDown } from 'lucide-react';
+import { Send, ChevronDown, MenuIcon } from 'lucide-react';
+import ConversationsSidebar from './ConversationsSidebar';
 
 const ChatInterface: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
+  const [showSidebar, setShowSidebar] = useState(false);
+  
   const { 
     messages, 
     loading, 
@@ -15,8 +19,11 @@ const ChatInterface: React.FC = () => {
     setModel,
     availablePersonas,
     currentPersona,
-    setPersona
+    setPersona,
+    activeConversationId,
+    createNewConversation
   } = useChat();
+  
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isPersonaDropdownOpen, setIsPersonaDropdownOpen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -79,133 +86,173 @@ const ChatInterface: React.FC = () => {
     return model;
   };
 
+  const toggleSidebar = () => {
+    setShowSidebar(!showSidebar);
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col h-full">
-      <div className="rounded-2xl glass-panel p-4 md:p-6 flex-grow flex flex-col h-full">
-        {/* Controls Bar */}
-        <div className="flex justify-between mb-2">
-          {/* Model Selection Dropdown */}
-          <div className="relative" ref={dropdownRef}>
-            <button
-              className="flex items-center space-x-1 text-sm text-starry-text hover:text-starry-highlight transition-colors"
-              onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-            >
-              <span>Model: {formatModelName(currentModel)}</span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            
-            {isModelDropdownOpen && (
-              <div className="absolute top-8 left-0 z-10 w-48 rounded-md shadow-lg bg-black/80 backdrop-blur-sm border border-white/10">
-                <div className="py-1">
-                  {availableModels.map((model) => (
-                    <button
-                      key={model}
-                      className={`block w-full text-left px-4 py-2 text-sm ${
-                        model === currentModel
-                          ? 'bg-starry-highlight/20 text-starry-highlight'
-                          : 'text-starry-text hover:bg-starry-highlight/10'
-                      }`}
-                      onClick={() => handleModelSelect(model)}
-                    >
-                      {formatModelName(model)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Persona Selection Dropdown */}
-          <div className="relative" ref={personaDropdownRef}>
-            <button
-              className="flex items-center space-x-1 text-sm text-starry-text hover:text-starry-highlight transition-colors"
-              onClick={() => setIsPersonaDropdownOpen(!isPersonaDropdownOpen)}
-            >
-              <span>Persona: {currentPersona}</span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            
-            {isPersonaDropdownOpen && (
-              <div className="absolute top-8 right-0 z-10 w-48 rounded-md shadow-lg bg-black/80 backdrop-blur-sm border border-white/10">
-                <div className="py-1">
-                  {availablePersonas.map((persona) => (
-                    <button
-                      key={persona.id}
-                      className={`block w-full text-left px-4 py-2 text-sm ${
-                        persona.id === currentPersona
-                          ? 'bg-starry-highlight/20 text-starry-highlight'
-                          : 'text-starry-text hover:bg-starry-highlight/10'
-                      }`}
-                      onClick={() => handlePersonaSelect(persona.id)}
-                    >
-                      {persona.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="chat-container flex-grow my-4 rounded-xl bg-black/20 overflow-y-auto backdrop-blur-sm">
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center px-4 py-10 text-center">
-              <div className="w-16 h-16 mb-6 rounded-full glass-panel flex items-center justify-center animate-starshine">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-8 h-8 text-starry-highlight"
-                >
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium mb-2 text-starry-text text-glow">Welcome to MindfulCompanion</h3>
-              <p className="text-starry-muted max-w-md">
-                I'm here to listen and provide support when you need it. 
-                Share how you're feeling or what's on your mind.
-              </p>
+      <div className="flex h-full">
+        {/* Mobile sidebar */}
+        {showSidebar && (
+          <div className="fixed inset-0 bg-black/50 z-20 md:hidden">
+            <div className="w-3/4 h-full">
+              <ConversationsSidebar isMobile={true} onClose={toggleSidebar} />
             </div>
-          ) : (
-            <div className="p-4 space-y-4">
-              {messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
-              ))}
-              {loading && (
-                <div className="chat-bubble-bot animate-pulse-subtle py-3 px-4 inline-flex">
-                  <div className="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+          </div>
+        )}
+        
+        {/* Desktop sidebar */}
+        <div className="hidden md:block md:w-64 h-full">
+          <ConversationsSidebar />
+        </div>
+        
+        <div className="flex-1 rounded-2xl glass-panel p-4 md:p-6 flex flex-col h-full">
+          {/* Controls Bar */}
+          <div className="flex justify-between mb-2">
+            {/* Mobile menu button */}
+            <button 
+              className="md:hidden p-2 -ml-2 text-starry-text hover:text-starry-highlight"
+              onClick={toggleSidebar}
+            >
+              <MenuIcon className="w-5 h-5" />
+            </button>
+            
+            {/* New conversation button (only visible when in a conversation) */}
+            {activeConversationId && (
+              <button
+                className="flex items-center space-x-1 text-sm text-starry-text hover:text-starry-highlight transition-colors"
+                onClick={() => createNewConversation()}
+              >
+                <span>New Chat</span>
+              </button>
+            )}
+            
+            <div className="flex-1"></div>
+            
+            {/* Model Selection Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                className="flex items-center space-x-1 text-sm text-starry-text hover:text-starry-highlight transition-colors"
+                onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+              >
+                <span>Model: {formatModelName(currentModel)}</span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              
+              {isModelDropdownOpen && (
+                <div className="absolute top-8 left-0 z-10 w-48 rounded-md shadow-lg bg-black/80 backdrop-blur-sm border border-white/10">
+                  <div className="py-1">
+                    {availableModels.map((model) => (
+                      <button
+                        key={model}
+                        className={`block w-full text-left px-4 py-2 text-sm ${
+                          model === currentModel
+                            ? 'bg-starry-highlight/20 text-starry-highlight'
+                            : 'text-starry-text hover:bg-starry-highlight/10'
+                        }`}
+                        onClick={() => handleModelSelect(model)}
+                      >
+                        {formatModelName(model)}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
-          )}
-        </div>
-        
-        <div className="relative">
-          <textarea
-            ref={inputRef}
-            className="w-full rounded-xl border-none bg-black/30 px-4 py-3 text-starry-text focus:ring-2 focus:ring-starry-highlight focus:outline-none resize-none"
-            rows={2}
-            placeholder="Type your message here..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-          <button
-            className="absolute right-3 bottom-3 p-2 rounded-full bg-starry-highlight text-white hover:bg-opacity-80 transition-colors duration-300"
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || loading}
-          >
-            <Send className="w-5 h-5" />
-          </button>
+
+            {/* Persona Selection Dropdown */}
+            <div className="relative" ref={personaDropdownRef}>
+              <button
+                className="flex items-center space-x-1 text-sm text-starry-text hover:text-starry-highlight transition-colors"
+                onClick={() => setIsPersonaDropdownOpen(!isPersonaDropdownOpen)}
+              >
+                <span>Persona: {currentPersona}</span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              
+              {isPersonaDropdownOpen && (
+                <div className="absolute top-8 right-0 z-10 w-48 rounded-md shadow-lg bg-black/80 backdrop-blur-sm border border-white/10">
+                  <div className="py-1">
+                    {availablePersonas.map((persona) => (
+                      <button
+                        key={persona.id}
+                        className={`block w-full text-left px-4 py-2 text-sm ${
+                          persona.id === currentPersona
+                            ? 'bg-starry-highlight/20 text-starry-highlight'
+                            : 'text-starry-text hover:bg-starry-highlight/10'
+                        }`}
+                        onClick={() => handlePersonaSelect(persona.id)}
+                      >
+                        {persona.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="chat-container flex-grow my-4 rounded-xl bg-black/20 overflow-y-auto backdrop-blur-sm">
+            {messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center px-4 py-10 text-center">
+                <div className="w-16 h-16 mb-6 rounded-full glass-panel flex items-center justify-center animate-starshine">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-8 h-8 text-starry-highlight"
+                  >
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium mb-2 text-starry-text text-glow">Welcome to MindfulCompanion</h3>
+                <p className="text-starry-muted max-w-md">
+                  I'm here to listen and provide support when you need it. 
+                  Share how you're feeling or what's on your mind.
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 space-y-4">
+                {messages.map((message) => (
+                  <MessageBubble key={message.id} message={message} />
+                ))}
+                {loading && (
+                  <div className="chat-bubble-bot animate-pulse-subtle py-3 px-4 inline-flex">
+                    <div className="typing-indicator">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
+          
+          <div className="relative">
+            <textarea
+              ref={inputRef}
+              className="w-full rounded-xl border-none bg-black/30 px-4 py-3 text-starry-text focus:ring-2 focus:ring-starry-highlight focus:outline-none resize-none"
+              rows={2}
+              placeholder="Type your message here..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <button
+              className="absolute right-3 bottom-3 p-2 rounded-full bg-starry-highlight text-white hover:bg-opacity-80 transition-colors duration-300"
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || loading}
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
