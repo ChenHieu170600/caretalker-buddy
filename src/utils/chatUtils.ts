@@ -1,10 +1,9 @@
 
-// Update the import path for useToast
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Message, Conversation } from '../types';
-import { sendMessageToBackend, getConversations, createNewConversation } from './apiService';
+import { sendMessageToBackend, getConversations, createNewConversation } from '../utils/apiService';
 import { useToast } from "../hooks/use-toast";
+import { Message } from '../types';
 
 interface ChatHookProps {
     conversationId: string | null;
