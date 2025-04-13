@@ -1,172 +1,125 @@
-
-import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
-import { getConversations, createNewConversation, deleteConversation } from '../utils/apiService';
-import { useToast } from "@/hooks/use-toast";
-
-interface Conversation {
-  id: string;
-  title: string;
-  updatedAt: string;
-}
+// Update the import path for useToast
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
+import { useToast } from "../hooks/use-toast";
+import { Conversation } from '../types';
+import { createNewConversation, getConversations, deleteConversation } from '../utils/apiService';
+import { cn } from "@/lib/utils";
 
 interface ConversationsSidebarProps {
-  currentConversationId: string | null;
-  onSelectConversation: (conversationId: string) => void;
-  onNewConversation: () => void;
+    onConversationSelected: (conversationId: string) => void;
+    selectedConversationId: string | null;
+    onClose: () => void;
 }
 
-const ConversationsSidebar: React.FC<ConversationsSidebarProps> = ({
-  currentConversationId,
-  onSelectConversation,
-  onNewConversation,
-}) => {
-  const [isOpen, setIsOpen] = useState(true);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+const ConversationsSidebar: React.FC<ConversationsSidebarProps> = ({ onConversationSelected, selectedConversationId, onClose }) => {
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [isCreating, setIsCreating] = useState(false);
+    const { toast } = useToast();
 
-  const toggleSidebar = () => {
-    setIsOpen(!isOpen);
-  };
+    useEffect(() => {
+        loadConversations();
+    }, []);
 
-  const loadConversations = async () => {
-    setIsLoading(true);
-    try {
-      const result = await getConversations();
-      if (result.conversations) {
-        const convArray = Object.entries(result.conversations).map(([id, data]) => ({
-          id,
-          title: data.title || 'Untitled Conversation',
-          updatedAt: data.updated_at,
-        }));
+    const loadConversations = async () => {
+        try {
+            const fetchedConversations = await getConversations();
+            setConversations(fetchedConversations);
+        } catch (error) {
+            console.error("Failed to load conversations:", error);
+            toast({
+                title: "Error loading conversations",
+                description: "Failed to load your conversations. Please try again.",
+                variant: "destructive",
+            });
+        }
+    };
 
-        // Sort conversations by updated_at date (newest first)
-        convArray.sort((a, b) => 
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        );
+    const handleCreateConversation = async () => {
+        setIsCreating(true);
+        try {
+            const newConversation = await createNewConversation();
+            setConversations(prev => [...prev, newConversation]);
+            onConversationSelected(newConversation.id);
+            toast({
+                title: "Conversation created",
+                description: "New conversation has been successfully created.",
+            });
+        } catch (error) {
+            console.error("Failed to create conversation:", error);
+            toast({
+                title: "Error creating conversation",
+                description: "Failed to create a new conversation. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsCreating(false);
+        }
+    };
 
-        setConversations(convArray);
-      }
-    } catch (error) {
-      console.error('Failed to load conversations:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load conversations",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const handleDeleteConversation = async (conversationId: string) => {
+        try {
+            await deleteConversation(conversationId);
+            setConversations(prev => prev.filter(c => c.id !== conversationId));
+            if (selectedConversationId === conversationId) {
+                onConversationSelected(conversations[0]?.id || null);
+            }
+            toast({
+                title: "Conversation deleted",
+                description: "The conversation has been successfully deleted.",
+            });
+        } catch (error) {
+            console.error("Failed to delete conversation:", error);
+            toast({
+                title: "Error deleting conversation",
+                description: "Failed to delete the conversation. Please try again.",
+                variant: "destructive",
+            });
+        }
+    };
 
-  const handleNewConversation = async () => {
-    try {
-      await createNewConversation();
-      await loadConversations();
-      onNewConversation();
-    } catch (error) {
-      console.error('Failed to create new conversation:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create new conversation",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteConversation = async (e: React.MouseEvent, conversationId: string) => {
-    e.stopPropagation();
-    try {
-      await deleteConversation(conversationId);
-      await loadConversations();
-      if (conversationId === currentConversationId) {
-        // If we deleted the current conversation, create a new one
-        onNewConversation();
-      }
-    } catch (error) {
-      console.error('Failed to delete conversation:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete conversation",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Load conversations initially and whenever the current conversation changes
-  useEffect(() => {
-    loadConversations();
-  }, [currentConversationId]);
-
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-      });
-    } catch {
-      return '';
-    }
-  };
-
-  return (
-    <div className={`conversation-sidebar ${isOpen ? 'open' : 'closed'}`}>
-      <div className="sidebar-toggle" onClick={toggleSidebar}>
-        {isOpen ? <ChevronLeft /> : <ChevronRight />}
-      </div>
-      
-      <div className={`sidebar-content ${isOpen ? 'block' : 'hidden'}`}>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-starry-text">Conversations</h3>
-          <button
-            onClick={handleNewConversation}
-            className="p-2 rounded-full bg-starry-highlight/20 hover:bg-starry-highlight/30 text-starry-highlight transition-colors"
-          >
-            <Plus size={18} />
-          </button>
-        </div>
-        
-        {isLoading ? (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-starry-highlight"></div>
-          </div>
-        ) : conversations.length === 0 ? (
-          <div className="text-starry-muted text-center py-4 text-sm">
-            No conversations yet
-          </div>
-        ) : (
-          <ul className="space-y-1">
-            {conversations.map((conversation) => (
-              <li 
-                key={conversation.id}
-                className={`
-                  p-2 rounded-lg cursor-pointer flex justify-between items-center
-                  ${currentConversationId === conversation.id 
-                    ? 'bg-starry-highlight/20 text-starry-highlight' 
-                    : 'text-starry-text hover:bg-white/5'}
-                  transition-colors
-                `}
-                onClick={() => onSelectConversation(conversation.id)}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm">{conversation.title}</p>
-                  <p className="text-xs text-starry-muted">{formatDate(conversation.updatedAt)}</p>
+    return (
+        <div className="conversation-sidebar">
+            <div className="sidebar-content">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-starry-text">Conversations</h2>
+                    <button
+                        onClick={handleCreateConversation}
+                        disabled={isCreating}
+                        className="px-3 py-1 bg-starry-highlight hover:bg-purple-700 text-white rounded-md transition-colors disabled:bg-purple-400 disabled:cursor-not-allowed"
+                    >
+                        <Plus className="h-4 w-4 mr-2 inline-block" />
+                        New
+                    </button>
                 </div>
-                <button
-                  onClick={(e) => handleDeleteConversation(e, conversation.id)}
-                  className="p-1 rounded-full opacity-60 hover:opacity-100 hover:bg-white/5"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
+                <ul>
+                    {conversations.map(conversation => (
+                        <li
+                            key={conversation.id}
+                            className={`py-2 px-4 rounded-md cursor-pointer hover:bg-white/5 transition-colors ${selectedConversationId === conversation.id ? 'bg-white/10' : ''}`}
+                            onClick={() => onConversationSelected(conversation.id)}
+                        >
+                            <div className="flex items-center justify-between">
+                                <span className="text-starry-text">{conversation.title}</span>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteConversation(conversation.id);
+                                    }}
+                                    className="text-white/50 hover:text-red-500 transition-colors"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+            <div className="sidebar-toggle" onClick={onClose}>
+                &times;
+            </div>
+        </div>
+    );
 };
 
 export default ConversationsSidebar;
