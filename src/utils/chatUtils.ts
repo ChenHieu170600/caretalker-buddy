@@ -1,121 +1,230 @@
-
-import { useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { sendMessageToBackend, getConversations, createNewConversation } from '../utils/apiService';
-import { useToast } from "../hooks/use-toast";
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Message } from '../types';
 
-interface ChatHookProps {
-    conversationId: string | null;
-    onConversationChange: (conversationId: string) => void;
+interface Persona {
+  id: string;
+  name: string;
+  description: string;
 }
 
-export const useChat = ({ conversationId, onConversationChange }: ChatHookProps) => {
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [newMessage, setNewMessage] = useState('');
-    const [isTyping, setIsTyping] = useState(false);
-    const { toast } = useToast();
+// Fallback responses in case the API is unavailable
+const fallbackResponses = [
+  "I'm here to listen and support you. How are you feeling today?",
+  "That sounds challenging. Would you like to tell me more about what's going on?",
+  "Thank you for sharing that with me. What do you think might help in this situation?",
+  "It's normal to feel that way. Remember that your feelings are valid.",
+  "I'm sorry to hear you're going through this. Remember to be kind to yourself.",
+  "Would it help to try a quick breathing exercise together? We could take a few deep breaths.",
+  "Is there someone in your life who might be able to offer additional support right now?",
+];
 
-    // Load messages for the current conversation
-    useEffect(() => {
-        if (conversationId) {
-            setLoading(true);
-            getConversations()
-                .then(response => {
-                    const conversations = Object.entries(response.conversations || {}).map(([id, data]) => ({
-                        id,
-                        title: data.title,
-                        lastUpdated: new Date(data.updated_at),
-                        messages: [] // We'll need to load these separately
-                    }));
-                    
-                    // For now, just clear messages until we implement message fetching
-                    setMessages([]);
-                    setLoading(false);
-                })
-                .catch(err => {
-                    setError('Failed to load messages.');
-                    setLoading(false);
-                    console.error("Error fetching conversations:", err);
-                });
-        } else {
-            setMessages([]);
+// Function to get a fallback response if the API fails
+export const getFallbackResponse = (): string => {
+  const randomIndex = Math.floor(Math.random() * fallbackResponses.length);
+  return fallbackResponses[randomIndex];
+};
+
+export const useChat = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [currentModel, setCurrentModel] = useState('google/gemma-3-27b-it:free');
+  const [currentPersona, setCurrentPersona] = useState('therapist');
+  const [availablePersonas, setAvailablePersonas] = useState<Persona[]>([]);
+  
+  const availableModels = [
+    'google/gemma-3-27b-it:free',
+    'deepseek/deepseek-r1:free',
+    'meta-llama/llama-3.3-70b-instruct:free'
+  ];
+  
+  // Fetch personas from backend
+  useEffect(() => {
+    const fetchPersonas = async () => {
+      try {
+        console.log('Fetching personas from backend...');
+        const response = await fetch('http://localhost:5000/api/personas');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Received personas data:', data);
+          const personas = Object.entries(data.personas).map(([id, details]: [string, any]) => ({
+            id,
+            name: details.name,
+            description: details.description
+          }));
+          setAvailablePersonas(personas);
+          setCurrentPersona(data.current_persona);
+          console.log('Set current persona to:', data.current_persona);
         }
-    }, [conversationId]);
-
-    // Function to send a new message
-    const sendMessage = async () => {
-        if (!newMessage.trim()) return;
-
-        const tempMessage: Message = {
-            id: uuidv4(),
-            conversationId: conversationId || 'temp',
-            content: newMessage,
-            sender: 'user',
-            timestamp: new Date(),
-        };
-
-        setMessages(prevMessages => [...prevMessages, tempMessage]);
-        setNewMessage('');
-        setIsTyping(true);
-
-        try {
-            if (conversationId) {
-                const response = await sendMessageToBackend(conversationId, newMessage);
-                if (response && response.message) {
-                    const botMessage: Message = {
-                        id: uuidv4(),
-                        conversationId: conversationId,
-                        content: response.message,
-                        sender: 'bot',
-                        timestamp: new Date(),
-                    };
-                    setMessages(prevMessages => [...prevMessages, botMessage]);
-                } else {
-                    throw new Error('Failed to send message.');
-                }
-            } else {
-                const newConversation = await createNewConversation();
-                if (newConversation && newConversation.conversation_id) {
-                    onConversationChange(newConversation.conversation_id);
-                    toast({
-                        title: "New Conversation Started!",
-                        description: "Your conversation has been successfully created.",
-                    });
-                } else {
-                    throw new Error('Failed to create new conversation.');
-                }
-            }
-        } catch (err) {
-            setError('Failed to send message.');
-            console.error("Error sending message:", err);
-            toast({
-                title: "Message Failed",
-                description: "There was an error sending your message. Please try again.",
-            });
-            setMessages(prevMessages => prevMessages.filter(message => message.id !== tempMessage.id));
-        } finally {
-            setIsTyping(false);
-        }
+      } catch (error) {
+        console.error('Error fetching personas:', error);
+      }
     };
+    
+    fetchPersonas();
+  }, []);
 
-    const handleKeyDown = (event: React.KeyboardEvent) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            sendMessage();
-        }
-    };
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-    return {
-        messages,
-        loading,
-        error,
-        newMessage,
-        setNewMessage,
-        sendMessage,
-        isTyping,
-        handleKeyDown
+  const updateBackendPersona = async (personaId: string) => {
+    try {
+      console.log('Updating backend persona to:', personaId);
+      const response = await fetch('http://localhost:5000/api/set-persona', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ persona: personaId }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update persona');
+      }
+      
+      const data = await response.json();
+      console.log('Backend persona update response:', data);
+      return data.current_persona;
+    } catch (error) {
+      console.error('Error updating persona:', error);
+      return null;
+    }
+  };
+
+  const updateBackendModel = async (modelId: string) => {
+    try {
+      console.log('Updating backend model to:', modelId);
+      const response = await fetch('http://localhost:5000/api/set-model', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ model: modelId }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to update model, status:', response.status);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error('Failed to update model');
+      }
+      
+      const data = await response.json();
+      console.log('Backend model update response:', data);
+      return data.current_model;
+    } catch (error) {
+      console.error('Error updating model:', error);
+      return null;
+    }
+  };
+
+  const handleSetPersona = async (personaId: string) => {
+    console.log('handleSetPersona called with:', personaId);
+    const updatedPersona = await updateBackendPersona(personaId);
+    if (updatedPersona) {
+      console.log('Setting current persona to:', updatedPersona);
+      setCurrentPersona(updatedPersona);
+    } else {
+      console.error('Failed to update persona in backend');
+    }
+  };
+
+  const handleSetModel = async (modelId: string) => {
+    console.log('handleSetModel called with:', modelId);
+    // First update the UI state immediately for better user experience
+    setCurrentModel(modelId);
+    
+    // Then update the backend
+    const updatedModel = await updateBackendModel(modelId);
+    if (updatedModel) {
+      console.log('Backend model updated to:', updatedModel);
+      // If the backend returned a different model, update the UI to match
+      if (updatedModel !== modelId) {
+        console.log('Backend returned different model, updating UI to:', updatedModel);
+        setCurrentModel(updatedModel);
+      }
+    } else {
+      console.error('Failed to update model in backend');
+      // Revert the UI state if backend update failed
+      setCurrentModel(currentModel);
+    }
+  };
+
+  const sendMessage = useCallback(async (content: string) => {
+    if (!content.trim()) return;
+    
+    console.log('Sending message with model:', currentModel, 'and persona:', currentPersona);
+    
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content,
+      sender: 'user',
+      timestamp: new Date()
     };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setLoading(true);
+    
+    try {
+      // Call API to get response
+      const response = await fetch('http://localhost:5000/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: content,
+          model: currentModel,
+          persona: currentPersona
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get response');
+      }
+      
+      const data = await response.json();
+      console.log('Received response from backend:', data);
+      
+      // Add assistant message
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: data.message,
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      
+      // Add error message
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: 'Sorry, I encountered an error. Please try again.',
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+      setTimeout(scrollToBottom, 100);
+    }
+  }, [currentModel, currentPersona]);
+
+  return {
+    messages,
+    loading,
+    sendMessage,
+    messagesEndRef,
+    availableModels,
+    currentModel,
+    setModel: handleSetModel,
+    availablePersonas,
+    currentPersona,
+    setPersona: handleSetPersona
+  };
 };
