@@ -1,6 +1,8 @@
+
 import React, { useState, useRef, KeyboardEvent } from 'react';
 import { useChat } from '../utils/chatUtils';
 import MessageBubble from './MessageBubble';
+import ConversationsSidebar from './ConversationsSidebar';
 import { Send, ChevronDown } from 'lucide-react';
 
 const ChatInterface: React.FC = () => {
@@ -15,7 +17,10 @@ const ChatInterface: React.FC = () => {
     setModel,
     availablePersonas,
     currentPersona,
-    setPersona
+    setPersona,
+    currentConversationId,
+    selectConversation,
+    newConversation
   } = useChat();
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isPersonaDropdownOpen, setIsPersonaDropdownOpen] = useState(false);
@@ -81,7 +86,15 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col h-full">
-      <div className="rounded-2xl glass-panel p-4 md:p-6 flex-grow flex flex-col h-full">
+      {/* Conversations Sidebar */}
+      <ConversationsSidebar 
+        currentConversationId={currentConversationId}
+        onSelectConversation={selectConversation}
+        onNewConversation={newConversation}
+      />
+
+      {/* Main Chat Interface */}
+      <div className="rounded-2xl glass-panel p-4 md:p-6 flex-grow flex flex-col h-full ml-10">
         {/* Controls Bar */}
         <div className="flex justify-between mb-2">
           {/* Model Selection Dropdown */}

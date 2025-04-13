@@ -1,5 +1,13 @@
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Message } from '../types';
+import { 
+  sendMessageToBackend, 
+  getConversations, 
+  createNewConversation, 
+  loadConversation 
+} from './apiService';
+import { useToast } from "@/hooks/use-toast";
 
 interface Persona {
   id: string;
@@ -31,6 +39,8 @@ export const useChat = () => {
   const [currentModel, setCurrentModel] = useState('google/gemma-3-27b-it:free');
   const [currentPersona, setCurrentPersona] = useState('therapist');
   const [availablePersonas, setAvailablePersonas] = useState<Persona[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const { toast } = useToast();
   
   const availableModels = [
     'google/gemma-3-27b-it:free',
@@ -38,14 +48,15 @@ export const useChat = () => {
     'meta-llama/llama-3.3-70b-instruct:free'
   ];
   
-  // Fetch personas from backend
+  // Fetch personas and conversations on initial load
   useEffect(() => {
-    const fetchPersonas = async () => {
+    const fetchInitialData = async () => {
       try {
+        // Fetch personas
         console.log('Fetching personas from backend...');
-        const response = await fetch('http://localhost:5000/api/personas');
-        if (response.ok) {
-          const data = await response.json();
+        const personasResponse = await fetch('http://localhost:5000/api/personas');
+        if (personasResponse.ok) {
+          const data = await personasResponse.json();
           console.log('Received personas data:', data);
           const personas = Object.entries(data.personas).map(([id, details]: [string, any]) => ({
             id,
@@ -56,12 +67,25 @@ export const useChat = () => {
           setCurrentPersona(data.current_persona);
           console.log('Set current persona to:', data.current_persona);
         }
+        
+        // Fetch conversations
+        const conversationsResponse = await getConversations();
+        if (conversationsResponse.current_conversation) {
+          setCurrentConversationId(conversationsResponse.current_conversation);
+          await loadConversationMessages(conversationsResponse.current_conversation);
+        } else {
+          // Create new conversation if none exists
+          const newConvResponse = await createNewConversation();
+          if (newConvResponse.conversation_id) {
+            setCurrentConversationId(newConvResponse.conversation_id);
+          }
+        }
       } catch (error) {
-        console.error('Error fetching personas:', error);
+        console.error('Error fetching initial data:', error);
       }
     };
     
-    fetchPersonas();
+    fetchInitialData();
   }, []);
 
   const scrollToBottom = () => {
@@ -151,6 +175,52 @@ export const useChat = () => {
     }
   };
 
+  const loadConversationMessages = async (conversationId: string) => {
+    try {
+      console.log('Loading conversation:', conversationId);
+      const data = await loadConversation(conversationId);
+      if (data.messages) {
+        const formattedMessages: Message[] = data.messages.map(message => ({
+          id: message.timestamp.toString(),
+          content: message.content,
+          sender: message.role === 'user' ? 'user' : 'bot',
+          timestamp: new Date(message.timestamp * 1000),
+          conversationId: conversationId
+        }));
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error('Error loading conversation messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load conversation messages",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSelectConversation = async (conversationId: string) => {
+    setCurrentConversationId(conversationId);
+    await loadConversationMessages(conversationId);
+  };
+
+  const handleNewConversation = async () => {
+    try {
+      const response = await createNewConversation();
+      if (response.conversation_id) {
+        setCurrentConversationId(response.conversation_id);
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error('Error creating new conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create new conversation",
+        variant: "destructive",
+      });
+    }
+  };
+
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
     
@@ -161,7 +231,8 @@ export const useChat = () => {
       id: Date.now().toString(),
       content,
       sender: 'user',
-      timestamp: new Date()
+      timestamp: new Date(),
+      conversationId: currentConversationId || undefined
     };
     
     setMessages(prev => [...prev, userMessage]);
@@ -169,34 +240,33 @@ export const useChat = () => {
     
     try {
       // Call API to get response
-      const response = await fetch('http://localhost:5000/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: content,
-          model: currentModel,
-          persona: currentPersona
-        }),
-      });
+      const response = await sendMessageToBackend(
+        content,
+        currentModel,
+        currentConversationId || undefined
+      );
       
-      if (!response.ok) {
-        throw new Error('Failed to get response');
+      if (response.error) {
+        throw new Error(response.error);
       }
       
-      const data = await response.json();
-      console.log('Received response from backend:', data);
+      console.log('Received response from backend:', response);
       
       // Add assistant message
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.message,
+        content: response.message,
         sender: 'bot',
-        timestamp: new Date()
+        timestamp: new Date(),
+        conversationId: response.conversation_id
       };
       
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Update current conversation ID if changed
+      if (response.conversation_id && response.conversation_id !== currentConversationId) {
+        setCurrentConversationId(response.conversation_id);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       
@@ -205,7 +275,8 @@ export const useChat = () => {
         id: (Date.now() + 1).toString(),
         content: 'Sorry, I encountered an error. Please try again.',
         sender: 'bot',
-        timestamp: new Date()
+        timestamp: new Date(),
+        conversationId: currentConversationId || undefined
       };
       
       setMessages(prev => [...prev, errorMessage]);
@@ -213,7 +284,7 @@ export const useChat = () => {
       setLoading(false);
       setTimeout(scrollToBottom, 100);
     }
-  }, [currentModel, currentPersona]);
+  }, [currentModel, currentPersona, currentConversationId]);
 
   return {
     messages,
@@ -225,6 +296,9 @@ export const useChat = () => {
     setModel: handleSetModel,
     availablePersonas,
     currentPersona,
-    setPersona: handleSetPersona
+    setPersona: handleSetPersona,
+    currentConversationId,
+    selectConversation: handleSelectConversation,
+    newConversation: handleNewConversation
   };
 };
