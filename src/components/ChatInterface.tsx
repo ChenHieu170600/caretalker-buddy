@@ -1,4 +1,4 @@
-import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
+import React, { useState, useRef, KeyboardEvent, useEffect, useCallback } from 'react';
 import { useChat } from '../utils/chatUtils';
 import MessageBubble from './MessageBubble';
 import ConversationsSidebar from './ConversationsSidebar';
@@ -13,6 +13,7 @@ import {
   initializeConversationsDirectory,
   conversationsDirectory
 } from '../utils/conversationStorage';
+import { useToast } from '../hooks/use-toast';
 //import LandingPage from './pages/LandingPage';
 
 const ChatInterface: React.FC = () => {
@@ -21,6 +22,8 @@ const ChatInterface: React.FC = () => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [partialMessage, setPartialMessage] = useState('');
+  const { toast } = useToast();
+  
   const { 
     messages, 
     loading, 
@@ -35,6 +38,7 @@ const ChatInterface: React.FC = () => {
     loadMessages,
     clearMessages
   } = useChat();
+
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isPersonaDropdownOpen, setIsPersonaDropdownOpen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -46,11 +50,10 @@ const ChatInterface: React.FC = () => {
     const initializeStorage = async () => {
       try {
         setIsLoading(true);
-        // Try to load conversations from localStorage first
+        await initializeConversationsDirectory();
         const loadedConversations = await getAllConversations();
         setConversations(loadedConversations);
         
-        // If there are conversations, load the most recent one
         if (loadedConversations.length > 0) {
           const mostRecent = loadedConversations[0];
           setCurrentConversationId(mostRecent.id);
@@ -61,6 +64,11 @@ const ChatInterface: React.FC = () => {
         }
       } catch (error) {
         console.error('Failed to initialize conversations:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load conversations. Please try refreshing the page.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -69,62 +77,118 @@ const ChatInterface: React.FC = () => {
     initializeStorage();
   }, []);
 
+  // Debounced save conversation
+  const debouncedSave = useCallback(
+    React.useMemo(
+      () => {
+        let timeoutId: NodeJS.Timeout;
+        return (conversation: StoredConversation) => {
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(async () => {
+            try {
+              await saveConversation(conversation);
+              const updatedConversations = await getAllConversations();
+              setConversations(updatedConversations);
+            } catch (error) {
+              console.error('Failed to save conversation:', error);
+              toast({
+                title: "Error",
+                description: "Failed to save conversation. Your changes may not be persisted.",
+                variant: "destructive",
+              });
+            }
+          }, 1000);
+        };
+      },
+      []
+    ),
+    []
+  );
+
   // Save conversation when messages change
   useEffect(() => {
-    const saveCurrentConversation = async () => {
-      if (messages.length > 0 && currentConversationId) {
-        const conversation: StoredConversation = {
-          id: currentConversationId,
-          title: messages[0].content.slice(0, 30) + '...',
-          messages: messages.map(msg => ({
-            role: msg.sender,
-            content: msg.content,
-            timestamp: msg.timestamp.toISOString()
-          })),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        await saveConversation(conversation);
-        const updatedConversations = await getAllConversations();
-        setConversations(updatedConversations);
-      }
-    };
-    
-    saveCurrentConversation();
-  }, [messages, currentConversationId]);
+    if (messages.length > 0 && currentConversationId) {
+      const conversation: StoredConversation = {
+        id: currentConversationId,
+        title: messages[0].content.slice(0, 30) + '...',
+        messages: messages.map(msg => ({
+          role: msg.sender,
+          content: msg.content,
+          timestamp: msg.timestamp.toISOString()
+        })),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      debouncedSave(conversation);
+    }
+  }, [messages, currentConversationId, debouncedSave]);
 
   const handleNewConversation = async () => {
-    // Try to initialize directory access when creating a new conversation
-    if (!conversationsDirectory) {
-      await initializeConversationsDirectory();
+    try {
+      if (!conversationsDirectory) {
+        await initializeConversationsDirectory();
+      }
+      const newId = generateConversationId();
+      setCurrentConversationId(newId);
+      clearMessages();
+      toast({
+        title: "New Conversation",
+        description: "Started a new conversation",
+      });
+    } catch (error) {
+      console.error('Failed to create new conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create new conversation. Please try again.",
+        variant: "destructive",
+      });
     }
-    const newId = generateConversationId();
-    setCurrentConversationId(newId);
-    clearMessages();
   };
 
   const handleSelectConversation = async (id: string) => {
-    setCurrentConversationId(id);
-    const conversation = await loadConversation(id);
-    if (conversation) {
-      loadMessages(conversation.messages);
+    try {
+      setCurrentConversationId(id);
+      const conversation = await loadConversation(id);
+      if (conversation) {
+        loadMessages(conversation.messages);
+      }
+    } catch (error) {
+      console.error('Failed to load conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load conversation. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDeleteConversation = async (id: string) => {
-    await deleteConversation(id);
-    const updatedConversations = await getAllConversations();
-    setConversations(updatedConversations);
-    
-    if (id === currentConversationId) {
-      setCurrentConversationId(null);
-      clearMessages();
+    try {
+      await deleteConversation(id);
+      const updatedConversations = await getAllConversations();
+      setConversations(updatedConversations);
+      
+      if (id === currentConversationId) {
+        setCurrentConversationId(null);
+        clearMessages();
+      }
+      toast({
+        title: "Success",
+        description: "Conversation deleted successfully",
+      });
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete conversation. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
   // Close dropdowns when clicking outside
-  React.useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsModelDropdownOpen(false);
@@ -142,16 +206,24 @@ const ChatInterface: React.FC = () => {
 
   const handleSendMessage = async () => {
     if (inputValue.trim()) {
-      const message = inputValue;
-      setInputValue(''); // Clear input box immediately
-      setPartialMessage('');
-      await sendMessage(message); // This streams response in background
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 50);
+      try {
+        const message = inputValue;
+        setInputValue(''); // Clear input box immediately
+        setPartialMessage('');
+        await sendMessage(message);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 50);
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        toast({
+          title: "Error",
+          description: "Failed to send message. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
-  
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -163,16 +235,23 @@ const ChatInterface: React.FC = () => {
   const handleModelSelect = (model: string) => {
     setModel(model);
     setIsModelDropdownOpen(false);
+    toast({
+      title: "Model Changed",
+      description: `Switched to ${formatModelName(model)}`,
+    });
   };
 
   const handlePersonaSelect = (persona: string) => {
     setPersona(persona);
     setIsPersonaDropdownOpen(false);
+    toast({
+      title: "Persona Changed",
+      description: `Switched to ${persona}`,
+    });
   };
 
   // Format model name for display
   const formatModelName = (model: string) => {
-    // Extract the model name from the full model ID
     const parts = model.split('/');
     if (parts.length > 1) {
       return parts[1].split(':')[0];
