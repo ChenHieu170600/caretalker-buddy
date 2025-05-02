@@ -13,12 +13,14 @@ import {
   initializeConversationsDirectory,
   conversationsDirectory
 } from '../utils/conversationStorage';
+//import LandingPage from './pages/LandingPage';
 
 const ChatInterface: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [conversations, setConversations] = useState<StoredConversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [partialMessage, setPartialMessage] = useState('');
   const { 
     messages, 
     loading, 
@@ -138,17 +140,18 @@ const ChatInterface: React.FC = () => {
     };
   }, []);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputValue.trim()) {
-      sendMessage(inputValue);
-      setInputValue('');
-      
-      // Focus the input after sending
+      const message = inputValue;
+      setInputValue(''); // Clear input box immediately
+      setPartialMessage('');
+      await sendMessage(message); // This streams response in background
       setTimeout(() => {
         inputRef.current?.focus();
       }, 50);
     }
   };
+  
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -196,7 +199,7 @@ const ChatInterface: React.FC = () => {
               {/* Model Selection Dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button
-                  className="flex items-center space-x-1 text-sm text-starry-text hover:text-starry-highlight transition-colors"
+                  className="flex items-center space-x-1 text-sm text-starry-text hover:text-purple-500 transition-colors"
                   onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
                 >
                   <span>Model: {formatModelName(currentModel)}</span>
@@ -211,8 +214,8 @@ const ChatInterface: React.FC = () => {
                           key={model}
                           className={`block w-full text-left px-4 py-2 text-sm ${
                             model === currentModel
-                              ? 'bg-starry-highlight/20 text-starry-highlight'
-                              : 'text-starry-text hover:bg-starry-highlight/10'
+                              ? 'bg-purple-600/20 text-purple-500'
+                              : 'text-starry-text hover:bg-purple-600/10'
                           }`}
                           onClick={() => handleModelSelect(model)}
                         >
@@ -227,7 +230,7 @@ const ChatInterface: React.FC = () => {
               {/* Persona Selection Dropdown */}
               <div className="relative" ref={personaDropdownRef}>
                 <button
-                  className="flex items-center space-x-1 text-sm text-starry-text hover:text-starry-highlight transition-colors"
+                  className="flex items-center space-x-1 text-sm text-starry-text hover:text-purple-500 transition-colors"
                   onClick={() => setIsPersonaDropdownOpen(!isPersonaDropdownOpen)}
                 >
                   <span>Persona: {currentPersona}</span>
@@ -242,8 +245,8 @@ const ChatInterface: React.FC = () => {
                           key={persona.id}
                           className={`block w-full text-left px-4 py-2 text-sm ${
                             persona.id === currentPersona
-                              ? 'bg-starry-highlight/20 text-starry-highlight'
-                              : 'text-starry-text hover:bg-starry-highlight/10'
+                              ? 'bg-purple-600/20 text-purple-500'
+                              : 'text-starry-text hover:bg-purple-600/10'
                           }`}
                           onClick={() => handlePersonaSelect(persona.id)}
                         >
@@ -281,18 +284,24 @@ const ChatInterface: React.FC = () => {
                 </div>
               ) : (
                 <div className="p-4 space-y-4">
-                  {messages.map((message) => (
+                 {messages.map((message) => (
                     <MessageBubble key={message.id} message={message} />
                   ))}
-                  {loading && (
+
+                  {partialMessage && (
+                    <div className="chat-bubble-bot py-3 px-4 inline-flex animate-pulse-subtle">
+                      <div className="text-starry-text whitespace-pre-line">{partialMessage}</div>
+                    </div>
+                  )}
+
+                  {loading && !partialMessage && (
                     <div className="chat-bubble-bot animate-pulse-subtle py-3 px-4 inline-flex">
                       <div className="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                        <span></span><span></span><span></span>
                       </div>
                     </div>
                   )}
+
                   <div ref={messagesEndRef} />
                 </div>
               )}

@@ -106,6 +106,7 @@ class ChatService:
             response = self.client.chat.completions.create(
                 model=model_to_use,
                 messages=messages,
+                stream=True,
                 temperature=0.7,
                 max_tokens=1000
             )
@@ -139,3 +140,34 @@ class ChatService:
                 "error": error_message,
                 "history": self.history
             } 
+        
+    def stream_response(self, message: str, model: Optional[str] = None):
+        self.add_message("user", message)
+        model_to_use = model if model else self.current_model
+        system_message = PERSONAS[self.current_persona]["system_message"]
+
+        messages = [{"role": "system", "content": system_message}] + self.history
+
+        try:
+            response = self.client.chat.completions.create(
+                model=model_to_use,
+                messages=messages,
+                stream=True,
+                temperature=0.7,
+                max_tokens=1000
+            )
+
+            full_response = ""
+            for chunk in response:
+                # Depending on the client used, adjust access path
+                delta = chunk.choices[0].delta
+                if hasattr(delta, "content") and delta.content:
+                    token = delta.content
+                    full_response += token
+                    yield token  # Yield each token to the frontend
+
+            self.add_message("assistant", full_response)
+
+        except Exception as e:
+            logger.error(f"Error during streaming: {str(e)}")
+            yield f"[Error] {str(e)}"
