@@ -60,19 +60,19 @@ const LandingPage = () => {
   // Testimonials section data
   const testimonials = [
     {
-      quote: "Từ ngày dùng app này tôi không cần phải share sếch để tìm kiếm sự chú ý của lốp xe nữa ",
-      name: "Haru Lee",
-      title: "Người nghiện Sếch"
+      quote: "This app has been a lifeline during my difficult days. Having someone to talk to anytime makes me feel less alone.",
+      name: "Jamie C.",
+      title: "Living with depression"
     },
     {
-      quote: "Là một người cực kỳ giàu và từng bị ám ảnh với gái anime, tôi đã không còn delulu từ ngày dùng Mindful companion, tôi và Lucia đã chia chia tay nhau khi tôi nhận ra cô ấy không có thực",
-      name: "Thanh Xuân",
-      title: "Hắc kiếm sĩ - kẻ hủy diệt wibu - Chồng cũ Lucia"
+      quote: "As someone with mobility challenges, finding accessible mental health support was hard until I found Mindful Companion.",
+      name: "Alex P.",
+      title: "Wheelchair user"
     },
     {
-      quote: "App này đã giúp tôi chữa bệnh Bắc Kỳ",
-      name: "Vy Lã",
-      title: "Người Hải Phòng"
+      quote: "The reminders and daily check-ins help me stay on track with my mental health routine. It's like having a supportive friend.",
+      name: "Morgan T.",
+      title: "Anxiety management"
     }
   ];
 
