@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { cn } from './ui/lib/utils';
+import { cn } from '../lib/utils';
 
 interface SupportCategoriesProps {
   activeCategory: string;
