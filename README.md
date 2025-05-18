@@ -1,22 +1,24 @@
 # Mindful Companion
 
-A modern chat application that provides AI-powered companionship and support through various personas.
+A modern, accessible chat interface built with React, TypeScript, and Tailwind CSS.
 
 ## Features
 
-- Multiple AI personas for different types of support and conversation
-- Real-time chat interface with markdown support
-- Modern, responsive UI built with Next.js and Tailwind CSS
-- Flask backend with OpenAI/OpenRouter integration
-- Secure API key management
+- 💬 Real-time chat interface with markdown support
+- 🎨 Beautiful, accessible UI with dark mode support
+- 🔄 Conversation history management
+- 🤖 Multiple AI model support
+- 👤 Customizable AI personas
+- 📱 Responsive design
+- ♿ Accessibility features
 
 ## Prerequisites
 
-- Node.js 18+ and npm
-- Python 3.8+
-- OpenAI API key or OpenRouter API key
+- Node.js 16.x or later
+- npm 7.x or later
+- Git
 
-## Setup
+## Installation
 
 1. Clone the repository:
 ```bash
@@ -24,54 +26,50 @@ git clone https://github.com/yourusername/mindful-companion.git
 cd mindful-companion
 ```
 
-2. Install frontend dependencies:
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Install backend dependencies:
-```bash
-cd backend
-pip install -r requirements.txt
+3. Create a `.env` file in the root directory and add your environment variables:
+```env
+VITE_API_BASE_URL=your_api_base_url
 ```
 
-4. Create a `.env` file in the backend directory:
-```
-OPENAI_API_KEY=your_api_key_here
-```
-
-5. Start the development servers:
-
-Frontend:
+4. Start the development server:
 ```bash
 npm run dev
 ```
 
-Backend:
-```bash
-cd backend
-python app.py
-```
-
-The application will be available at `http://localhost:3000`
-
 ## Project Structure
 
 ```
-mindful-companion/
-├── backend/
-│   ├── app.py
-│   ├── config.py
-│   ├── personas.py
-│   └── services/
-│       └── chat_service.py
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── utils/
-├── public/
-└── package.json
+src/
+├── components/        # React components
+├── hooks/            # Custom React hooks
+├── pages/            # Page components
+├── types/            # TypeScript type definitions
+├── utils/            # Utility functions
+└── App.tsx          # Main application component
 ```
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+- `npm run test` - Run tests
+
+## Accessibility
+
+This project follows WCAG 2.1 guidelines and includes:
+
+- ARIA labels and roles
+- Keyboard navigation
+- High contrast color schemes
+- Screen reader support
+- Focus management
 
 ## Contributing
 
@@ -83,5 +81,12 @@ mindful-companion/
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.# Mindfull-Companion
-"# Mindfull-Companion" 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [React](https://reactjs.org/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [React Markdown](https://github.com/remarkjs/react-markdown)
+- [Lucide Icons](https://lucide.dev/)

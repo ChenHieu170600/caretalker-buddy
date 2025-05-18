@@ -151,11 +151,22 @@ export const useChat = () => {
     }
   };
 
+  const loadMessages = useCallback((storedMessages: Array<{ role: string; content: string; timestamp: string }>) => {
+    const loadedMessages: Message[] = storedMessages.map(msg => ({
+      id: Math.random().toString(36).substr(2, 9),
+      sender: msg.role as 'user' | 'bot',
+      content: msg.content,
+      timestamp: new Date(msg.timestamp)
+    }));
+    setMessages(loadedMessages);
+    setTimeout(scrollToBottom, 100);
+  }, []);
+
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
-    
+  
     console.log('Sending message with model:', currentModel, 'and persona:', currentPersona);
-    
+  
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -163,12 +174,19 @@ export const useChat = () => {
       sender: 'user',
       timestamp: new Date()
     };
-    
-    setMessages(prev => [...prev, userMessage]);
+  
+    const assistantId = `assistant-${Date.now()}`;
+    let assistantMessage: Message = {
+      id: assistantId,
+      content: '',
+      sender: 'bot',
+      timestamp: new Date()
+    };
+  
+    setMessages(prev => [...prev, userMessage, assistantMessage]);
     setLoading(true);
-    
+  
     try {
-      // Call API to get response
       const response = await fetch('http://localhost:5000/api/chat', {
         method: 'POST',
         headers: {
@@ -177,43 +195,62 @@ export const useChat = () => {
         body: JSON.stringify({
           message: content,
           model: currentModel,
-          persona: currentPersona
+          persona: currentPersona,
+          stream: true // indicate streaming mode to backend
         }),
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to get response');
+  
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder('utf-8');
+  
+      if (!reader) throw new Error('Streaming not supported');
+  
+      let fullContent = '';
+      let done = false;
+  
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        const chunk = decoder.decode(value, { stream: true });
+  
+        if (chunk) {
+          fullContent += chunk;
+  
+          assistantMessage = {
+            ...assistantMessage,
+            content: fullContent
+          };
+  
+          setMessages(prev => {
+            const updated = [...prev];
+            const index = updated.findIndex(msg => msg.id === assistantId);
+            if (index !== -1) {
+              updated[index] = assistantMessage;
+            }
+            return updated;
+          });
+        }
       }
-      
-      const data = await response.json();
-      console.log('Received response from backend:', data);
-      
-      // Add assistant message
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: data.message,
-        sender: 'bot',
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
-      
-      // Add error message
+  
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: 'Sorry, I encountered an error. Please try again.',
         sender: 'bot',
         timestamp: new Date()
       };
-      
+  
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setLoading(false);
       setTimeout(scrollToBottom, 100);
     }
-  }, [currentModel, currentPersona]);
+  }, [currentModel, currentPersona])
+  
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+  }, []);
 
   return {
     messages,
@@ -225,6 +262,9 @@ export const useChat = () => {
     setModel: handleSetModel,
     availablePersonas,
     currentPersona,
-    setPersona: handleSetPersona
+    setPersona: handleSetPersona,
+    loadMessages,
+    clearMessages
   };
-};
+  };
+  

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, Response
+from flask import Blueprint, request, jsonify, Response, stream_with_context
 import logging
 from services.chat_service import ChatService
 from config import AVAILABLE_MODELS, DEFAULT_MODEL
@@ -9,6 +9,42 @@ logger = logging.getLogger(__name__)
 
 chat_bp = Blueprint('chat', __name__)
 chat_service = ChatService()
+
+# @chat_bp.route('/chat', methods=['POST', 'OPTIONS'])
+# def chat():
+#     if request.method == 'OPTIONS':
+#         return Response(status=200)
+        
+#     data = request.json
+#     if not data or 'message' not in data:
+#         return jsonify({
+#             "message": "Invalid request format",
+#             "error": "Missing message in request body"
+#         }), 400
+
+#     try:
+#         logger.info(f"Received chat request with message: {data['message'][:50]}...")
+        
+#         # Get model from request or use current model
+#         model = data.get('model', chat_service.get_current_model())
+#         logger.info(f"Using model: {model}")
+        
+#         response = chat_service.generate_response(
+#             message=data['message'],
+#             model=model
+#         )
+#         return jsonify(response)
+    
+#     except Exception as e:
+#         logger.error(f"Error in chat route: {str(e)}", exc_info=True)
+#         return jsonify({
+#             "message": "I'm having trouble connecting right now. Could you please try again?",
+#             "error": str(e)
+#         }), 500
+
+
+
+
 
 @chat_bp.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
@@ -24,23 +60,27 @@ def chat():
 
     try:
         logger.info(f"Received chat request with message: {data['message'][:50]}...")
-        
-        # Get model from request or use current model
+
         model = data.get('model', chat_service.get_current_model())
         logger.info(f"Using model: {model}")
-        
-        response = chat_service.generate_response(
-            message=data['message'],
-            model=model
-        )
-        return jsonify(response)
-    
+
+        # Define streaming generator
+        def generate():
+            for token in chat_service.stream_response(
+                message=data['message'],
+                model=model
+            ):
+                yield token  # stream raw tokens
+
+        return Response(stream_with_context(generate()), content_type='text/plain')
+
     except Exception as e:
         logger.error(f"Error in chat route: {str(e)}", exc_info=True)
         return jsonify({
             "message": "I'm having trouble connecting right now. Could you please try again?",
             "error": str(e)
         }), 500
+
 
 @chat_bp.route('/models', methods=['GET'])
 def get_models():

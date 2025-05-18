@@ -50,3 +50,4 @@ dist/
 # Logs
 logs/
 *.log
+.vercel
