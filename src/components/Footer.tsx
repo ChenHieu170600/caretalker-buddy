@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Footer: React.FC = () => {
   return (
@@ -10,15 +11,21 @@ const Footer: React.FC = () => {
             MindfulCompanion is here to provide support, but is not a replacement for professional mental health care.
           </p>
           <div className="flex items-center space-x-4">
-            <button className="text-xs py-1.5 px-3 rounded-full glass-panel text-starry-text hover:bg-opacity-50 transition-colors duration-300">
-              Help
-            </button>
-            <button className="text-xs py-1.5 px-3 rounded-full glass-panel text-starry-text hover:bg-opacity-50 transition-colors duration-300">
-              Resources
-            </button>
-            <button className="text-xs py-1.5 px-3 rounded-full bg-starry-highlight text-white hover:bg-opacity-80 transition-colors duration-300">
-              Crisis Help
-            </button>
+            <Link to="/help">
+              <button className="text-xs py-1.5 px-3 rounded-full glass-panel text-starry-text hover:bg-opacity-50 transition-colors duration-300">
+                Help
+              </button>
+            </Link>
+            <Link to="/help">
+              <button className="text-xs py-1.5 px-3 rounded-full glass-panel text-starry-text hover:bg-opacity-50 transition-colors duration-300">
+                Resources
+              </button>
+            </Link>
+            <Link to="/help">
+              <button className="text-xs py-1.5 px-3 rounded-full bg-starry-highlight text-white hover:bg-opacity-80 transition-colors duration-300">
+                Crisis Help
+              </button>
+            </Link>
           </div>
         </div>
       </div>

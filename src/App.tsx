@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Index from './pages/Index';
 import NotFound from './pages/NotFound';
 import LandingPage from './pages/LandingPage';
+import HelpPage from './pages/HelpPage';
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App: React.FC = () => {
           <AuthProvider>
             <Routes>
               <Route path="/" element={<LandingPage />} />
+              <Route path="/help" element={<HelpPage />} />
               <Route
                 path="/chat"
                 element={
