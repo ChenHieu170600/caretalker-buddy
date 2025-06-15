@@ -1,6 +1,6 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-import { jwtDecode } from 'jwt-decode';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { useNavigate } from 'react-router-dom';
 
 interface User {
@@ -17,6 +17,7 @@ interface AuthContextType {
   logout: () => void;
   handleGoogleSuccess: (credentialResponse: any) => void;
   handleGoogleError: () => void;
+  googleClientId: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,6 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || null;
 
   useEffect(() => {
     // Load user from localStorage if available
@@ -76,9 +79,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.error('Login Failed');
   };
 
+  const contextValue = {
+    user,
+    loading,
+    login,
+    logout,
+    handleGoogleSuccess,
+    handleGoogleError,
+    googleClientId
+  };
+
+  // Only render GoogleOAuthProvider if we have a client ID
+  if (!googleClientId) {
+    return (
+      <AuthContext.Provider value={contextValue}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, handleGoogleSuccess, handleGoogleError }}>
-      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+    <AuthContext.Provider value={contextValue}>
+      <GoogleOAuthProvider clientId={googleClientId}>
         {children}
       </GoogleOAuthProvider>
     </AuthContext.Provider>
@@ -92,5 +114,3 @@ export function useAuth() {
   }
   return context;
 }
-
-export { GoogleLogin }; 
